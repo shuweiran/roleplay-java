@@ -1,0 +1,34 @@
+server:
+  port: 8000
+
+spring:
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+
+roleplay:
+  frontend:
+    dist-dir: "../frontend/dist"
+
+  llm:
+    api-base: "https://api.deepseek.com"
+    model: "deepseek-v4-flash"
+    max-tokens: 4096
+    temperature: 0.9
+    fallback-model: "deepseek-v4-flash"
+    timeout-seconds: 60
+  memory:
+    short-term-rounds: 20
+    summary-interval: 10
+  round:
+    parallel-agents: true
+    agent-max-tokens: 300
+    arbiter-max-tokens: 150
+  mode:
+    default: "free"
+    language: "zh"
+  frontend:
+    dev-mode: false
+    dev-port: 5173
+    dist-dir: "../frontend/dist"
