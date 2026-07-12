@@ -128,6 +128,7 @@ public class RouterService {
         s.put("scene", sceneDescription);
         s.put("agent_count", agents.size());
         s.put("agent_names", agents.keySet().stream().toList());
+        s.put("agents", agents.keySet().stream().toList());
         s.put("protagonist", protagonist);
         s.put("director_character", directorCharacter);
         s.put("goals", goals);
@@ -355,10 +356,18 @@ public class RouterService {
 
     public void addAgent(String name, Persona persona) {
         agents.put(name, new Agent(persona, "agent", llmClient));
+        // Update state with current agent list
+        List<String> agentNames = new ArrayList<>(agents.keySet());
+        state.put("agents", agentNames);
+        state.put("agent_count", agentNames.size());
     }
 
     public void removeAgent(String name) {
         agents.remove(name);
+        // Update state
+        List<String> agentNames = new ArrayList<>(agents.keySet());
+        state.put("agents", agentNames);
+        state.put("agent_count", agentNames.size());
     }
 
     // ═══════════════════════════════════════════════════════════
