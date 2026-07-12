@@ -29,6 +29,8 @@ public class CharacterController {
             "voice", "温和", "background", "一直在你身边"));
     }
 
+    public List<Map<String, Object>> getAll() { return new ArrayList<>(characters); }
+
     @GetMapping
     public ResponseEntity<List<Map<String, Object>>> list() {
         return ResponseEntity.ok(new ArrayList<>(characters));

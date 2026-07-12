@@ -23,18 +23,27 @@ public class SessionController {
     private final RouterService router;
     private final ScriptService scriptService;
     private final PrivateChatService privateChatService;
+    private final CharacterController characterController;
+    private final SceneController sceneController;
     private final Map<String, RouterService> sessions = new ConcurrentHashMap<>();
 
     public SessionController(RouterService router, ScriptService scriptService,
-                             PrivateChatService privateChatService) {
+                             PrivateChatService privateChatService,
+                             CharacterController characterController,
+                             SceneController sceneController) {
         this.router = router;
         this.scriptService = scriptService;
         this.privateChatService = privateChatService;
+        this.characterController = characterController;
+        this.sceneController = sceneController;
     }
 
     @GetMapping("/state")
     public ResponseEntity<Map<String, Object>> getState() {
-        return ResponseEntity.ok(router.getState());
+        Map<String, Object> state = new LinkedHashMap<>(router.getState());
+        state.put("characters", characterController.getAll());
+        state.put("scenes", sceneController.getAll());
+        return ResponseEntity.ok(state);
     }
 
     @PostMapping("/init")
