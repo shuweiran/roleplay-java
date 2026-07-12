@@ -53,4 +53,11 @@ public class HistoryController {
         if (s == null) return ResponseEntity.ok(Map.of("status", "not_found"));
         return ResponseEntity.ok(Map.of("status", "loaded", "session_id", id));
     }
+
+    /** Auto-save a session from MemoryStore. */
+    public void saveSession(String id, Session session) {
+        if (id != null && session != null) {
+            savedSessions.put(id, session);
+        }
+    }
 }

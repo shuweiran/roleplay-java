@@ -42,6 +42,8 @@ public class RouterService {
     private final GeneratorService generator;
     private final TrackRequestService trackRequestService;
     private final LLMClient llmClient;
+    private final com.roleplay.engine.controller.HistoryController historyController;
+    private final LorebookService lorebookService;
 
     private final Map<String, Agent> agents = new ConcurrentHashMap<>();
     private final Map<String, Object> state = new ConcurrentHashMap<>();
@@ -61,7 +63,9 @@ public class RouterService {
                          MemoryStore memory, Compressor compressor,
                          Monitor monitor, GeneratorService generator,
                          TrackRequestService trackRequestService,
-                         LLMClient llmClient) {
+                         LLMClient llmClient,
+                         com.roleplay.engine.controller.HistoryController historyController,
+                         LorebookService lorebookService) {
         this.arbiter = arbiter;
         this.executor = executor;
         this.memory = memory;
@@ -70,6 +74,8 @@ public class RouterService {
         this.generator = generator;
         this.trackRequestService = trackRequestService;
         this.llmClient = llmClient;
+        this.historyController = historyController;
+        this.lorebookService = lorebookService;
         memory.setCompressor(compressor);
     }
 
@@ -160,12 +166,30 @@ public class RouterService {
         List<String> agentNames = new ArrayList<>(agents.keySet());
         String historySummary = memory.getSummaryContext();
 
-        // Step 1: Silent process pending track requests
+        // Step 1b: Lorebook injection
+        String loreContext = "";
+        if (lorebookService != null) {
+            if (userInput != null) {
+                loreContext = lorebookService.buildLoreContext(sessionId, userInput);
+            }
+            // Also scan existing messages
+            if (memory.hasSession()) {
+                List<Message> msgs = memory.getSession().getMessages();
+                if (!msgs.isEmpty()) {
+                    String lastMsg = msgs.get(msgs.size() - 1).getContent();
+                    loreContext += lorebookService.buildLoreContext(sessionId, lastMsg);
+                }
+            }
+        }
+
+        // Step 2: Silent process pending track requests
         trackRequestService.silentProcessPending(sessionId, goals);
 
         // Step 2: Configure tracks via Arbiter
+        String enrichedScene = loreContext.isEmpty() ? sceneDescription
+            : sceneDescription + loreContext;
         TrackConfigResult trackResult = arbiter.configureTracks(
-            sceneDescription, agentNames, historySummary,
+            enrichedScene, agentNames, historySummary,
             mode, protagonist, previousTracks, goals, restrictedAgents);
         previousTracks = trackResult.tracks;
 
@@ -240,6 +264,11 @@ public class RouterService {
         String status = execResult.metrics() != null
             ? String.format("%d agents in %.0fms", agentOutputs.size(), execResult.metrics().totalRoundTimeMs())
             : agentOutputs.size() + " agents done";
+
+        // Auto-save to history
+        if (historyController != null && memory.hasSession()) {
+            historyController.saveSession(sessionId, memory.getSession());
+        }
 
         return new RoundResult(status, agentOutputs, integration, trackResult.reasoning,
             execResult.metrics() != null ? execResult.metrics().toMap() : Map.of());
