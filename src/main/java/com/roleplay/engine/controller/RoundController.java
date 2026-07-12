@@ -37,7 +37,9 @@ public class RoundController {
 
     @PostMapping("/rollback")
     public ResponseEntity<Map<String, Object>> rollback(@RequestBody Map<String, Object> body) {
-        return ResponseEntity.ok(Map.of("status", "rolled_back"));
+        int round = ((Number) body.getOrDefault("round", 0)).intValue();
+        String result = router.rollbackToRound("", round);
+        return ResponseEntity.ok(Map.of("status", result));
     }
 
     @GetMapping("/status")

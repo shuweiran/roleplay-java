@@ -163,6 +163,10 @@ public class RouterService {
         }
 
         roundCount++;
+        // Snapshot current round before starting
+        if (memory.hasSession()) {
+            snapshotRound(sessionId);
+        }
         List<String> agentNames = new ArrayList<>(agents.keySet());
         String historySummary = memory.getSummaryContext();
 
@@ -478,6 +482,7 @@ public class RouterService {
         if (targetRound < 0 || targetRound >= roundHistory.size())
             return "无效回合: " + targetRound;
         memory.getSession().setMessages(new ArrayList<>(roundHistory.get(targetRound)));
+        roundCount = targetRound;
         state.put("round", targetRound);
         return "已回滚到第 " + targetRound + " 轮";
     }
