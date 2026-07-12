@@ -375,6 +375,106 @@ public class RouterService {
     }
 
     // ═══════════════════════════════════════════════════════════
+    //  Character Relations
+    // ═══════════════════════════════════════════════════════════
+
+    private final Map<String, Map<String, Map<String, String>>> characterRelations = new ConcurrentHashMap<>();
+
+    /** Build relationship graph from script data. */
+    public void buildCharacterRelations(Map<String, Object> scriptData) {
+        characterRelations.clear();
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> relationships = (List<Map<String, Object>>) scriptData.getOrDefault("relationships", List.of());
+        for (Map<String, Object> rel : relationships) {
+            String from = (String) rel.getOrDefault("from", rel.getOrDefault("from_char", ""));
+            String to = (String) rel.get("to");
+            String relation = (String) rel.get("relation");
+            String desc = (String) rel.get("description");
+            if (from.isEmpty() || to == null) continue;
+            characterRelations.computeIfAbsent(from, k -> new ConcurrentHashMap<>())
+                .put(to, Map.of("relation", relation != null ? relation : "",
+                                "description", desc != null ? desc : ""));
+        }
+        // Store in memory
+        if (!characterRelations.isEmpty()) {
+            StringBuilder sb = new StringBuilder("【角色关系图】\n");
+            characterRelations.forEach((from, targets) ->
+                targets.forEach((to, info) ->
+                    sb.append(from).append("→").append(to).append(": ")
+                      .append(info.get("relation")).append("（").append(info.get("description")).append("）\n")));
+            String currentSession = this.state.getOrDefault("session_id", "").toString();
+            if (!currentSession.isEmpty() && memory.hasSession()) {
+                memory.addMessage(new com.roleplay.engine.core.Message(
+                    com.roleplay.engine.core.Message.Role.SYSTEM, "主控", sb.toString()));
+            }
+        }
+    }
+
+    /** Get drift prevention prompt for an agent. */
+    public String buildDriftPreventionPrompt(String agentName) {
+        Map<String, Map<String, String>> rels = characterRelations.get(agentName);
+        if (rels == null || rels.isEmpty()) return "";
+        StringBuilder sb = new StringBuilder("【角色关系】\n");
+        rels.forEach((target, info) ->
+            sb.append("与").append(target).append("的关系：")
+              .append(info.get("relation")).append("（").append(info.get("description")).append("）\n"));
+        sb.append("请严格依据以上设定行动，不要偏离角色的背景、目标和人际关系。");
+        return sb.toString();
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    //  Round Rollback
+    // ═══════════════════════════════════════════════════════════
+
+    private final List<List<Message>> roundHistory = new ArrayList<>();
+
+    /** Save current round's messages before overwriting. */
+    private void snapshotRound(String sessionId) {
+        List<Message> snapshot = new ArrayList<>(memory.getSession().getMessages());
+        roundHistory.add(snapshot);
+        if (roundHistory.size() > 50) roundHistory.remove(0); // cap
+    }
+
+    /** Rollback to a previous round number. */
+    public String rollbackToRound(String sessionId, int targetRound) {
+        if (targetRound < 0 || targetRound >= roundHistory.size())
+            return "无效回合: " + targetRound;
+        memory.getSession().setMessages(new ArrayList<>(roundHistory.get(targetRound)));
+        state.put("round", targetRound);
+        return "已回滚到第 " + targetRound + " 轮";
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    //  Auto Rounds
+    // ═══════════════════════════════════════════════════════════
+
+    private volatile boolean autoRunning = false;
+
+    /** Run multiple rounds automatically. */
+    public List<RoundResult> runAutoRounds(String userInput, int turns) {
+        List<RoundResult> results = new ArrayList<>();
+        autoRunning = true;
+        for (int i = 0; i < turns && autoRunning; i++) {
+            RoundResult result = runRound(i == 0 ? userInput : null, null);
+            results.add(result);
+            if (result.status.contains("error")) break;
+        }
+        autoRunning = false;
+        return results;
+    }
+
+    public void stopAutoRounds() { autoRunning = false; }
+    public boolean isAutoRunning() { return autoRunning; }
+
+    // ═══════════════════════════════════════════════════════════
+    //  Message snapshot in runRound
+    // ═══════════════════════════════════════════════════════════
+
+    public void addSnapshotToRunRound(String sessionId) {
+        snapshotRound(sessionId);
+    }
+
+    // ═══════════════════════════════════════════════════════════
     //  Value objects
     // ═══════════════════════════════════════════════════════════
 

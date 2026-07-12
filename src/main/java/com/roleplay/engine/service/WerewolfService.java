@@ -334,6 +334,27 @@ public class WerewolfService {
         g.lastNightSaved = "";
     }
 
+    /** Hunter retaliates — picks a target to shoot after death. */
+    public String hunterShoot(String sessionId, String player, String target) {
+        GameState g = games.get(sessionId);
+        if (g == null) return "游戏不存在";
+        if (!g.eliminated.stream().anyMatch(e -> player.equals(e.get("name"))))
+            return "只有被淘汰的猎人才能开枪";
+        if (!g.hunterCanShoot) return "猎人已经开过枪了";
+        if (!g.alive.contains(target)) return target + " 已死亡";
+        g.hunterCanShoot = false;
+        g.alive.remove(target);
+        g.eliminated.add(Map.of("name", target, "reason", "被猎人反击击杀", "round", g.round));
+
+        // Re-check win condition after hunter shot
+        String winner = checkWinCondition(g);
+        if (!winner.isEmpty()) {
+            g.winner = winner;
+            g.phase = Phase.ENDED;
+        }
+        return "猎人 " + player + " 开枪击杀了 " + target;
+    }
+
     private String killedBy(GameState g, String player) {
         if (player.equals(g.wolfTarget) && !player.equals(g.witchSaveTarget)) return "被狼人杀害";
         if (player.equals(g.witchPoisonTarget)) return "被女巫毒杀";

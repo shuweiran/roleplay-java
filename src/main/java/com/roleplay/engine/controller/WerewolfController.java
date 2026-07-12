@@ -53,13 +53,21 @@ public class WerewolfController {
     }
 
     @PostMapping("/night_action")
-    public ResponseEntity<Map<String, Object>> nightAction(@RequestBody Map<String, Object> body) {
-        String player = (String) body.getOrDefault("player", "");
-        String action = (String) body.getOrDefault("action", "");
-        String target = (String) body.getOrDefault("target", "");
+    public ResponseEntity<Map<String, Object>> nightAction(@RequestBody Map<String, String> body) {
+        String player = body.getOrDefault("player", "");
+        String action = body.getOrDefault("action", "");
+        String target = body.getOrDefault("target", "");
         String sessionId = playerSessions.getOrDefault(player, currentSessionId);
-
         String result = werewolfService.recordNightAction(sessionId, player, action, target);
+        return ResponseEntity.ok(Map.of("result", result));
+    }
+
+    @PostMapping("/hunter_shoot")
+    public ResponseEntity<Map<String, Object>> hunterShoot(@RequestBody Map<String, String> body) {
+        String player = body.getOrDefault("player", "");
+        String target = body.getOrDefault("target", "");
+        String sessionId = playerSessions.getOrDefault(player, currentSessionId);
+        String result = werewolfService.hunterShoot(sessionId, player, target);
         return ResponseEntity.ok(Map.of("result", result));
     }
 

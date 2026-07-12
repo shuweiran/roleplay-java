@@ -8,9 +8,6 @@ spring:
       write-dates-as-timestamps: false
 
 roleplay:
-  frontend:
-    dist-dir: "../frontend/dist"
-
   llm:
     api-base: "https://api.deepseek.com"
     model: "deepseek-v4-flash"
@@ -31,4 +28,4 @@ roleplay:
   frontend:
     dev-mode: false
     dev-port: 5173
-    dist-dir: "../frontend/dist"
+    dist-dir: "../roleplay-v4/frontend/dist"
